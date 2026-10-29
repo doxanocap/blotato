@@ -1,31 +1,23 @@
-# Как работаем
+# Working approach
 
-Цель: быстро доставить дешёвый MVP, развернуть его в облаке и показать настоящий разговор между двумя Instagram-аккаунтами.
+Ship a small backend, deploy it on the existing host and provide a reproducible demo. Track live Instagram access separately.
 
-## Первые принципы
+## Principles
 
-1. Сначала дешёвый работающий MVP, затем убираем лишнее, только потом оптимизируем. Начинаем с одного процесса, БД уровня SQLite и одного сценария. Усложнение требует наблюдаемой причины.
-2. Результат - живой путь двумя Instagram-аккаунтами: комментарий → публичный ответ → вопрос в DM → email → ссылка в DM. Искусственные события помогают разработке, но не заменяют эту проверку.
-3. Развёртываем на существующем хостинге и домене. Проверяем HTTPS, возможность запустить процесс и сохранить данные после перезапуска. Доступ Meta проверяем в начале, чтобы сразу обнаружить блокер живой интеграции.
-4. Работаем быстро, короткими шагами с результатом, проверкой и владельцем. Агент самостоятельно решает обычные трудности в своей области. Не заменяет поставку архитектурным расширением или бесконечным исследованием.
-5. Коммит только после явного подтверждения пользователя. История отражает проверенную работу; даты и сообщения не подгоняем под демонстрацию.
-6. Пользователь задаёт направление, обсуждает решения и проверяет продукт; код пишут агенты. После доставки покажем этот процесс в README через настоящие коммиты и проверки. Отдельный AI_USAGE сейчас не нужен.
+1. Make it work, remove unnecessary parts, then optimize. Start with one process, SQLite and one workflow.
+2. Verify the complete local flow. A real two-account Instagram demo additionally requires Meta access and actual event delivery.
+3. Use the existing hosting and domain. Check HTTPS, persistent data and platform-access requirements early.
+4. Work in short iterations with clear ownership and a concrete result. Resolve routine issues without adding infrastructure or endless research.
+5. Commit only after approval. Preserve real development history and dates.
+6. The user defines scope, decides trade-offs and checks results; agents write code. Summarize this honestly in README.
 
-## Что считать готовым
+## Documents and ownership
 
-- Сервис доступен по HTTPS в облаке, данные сохраняются после перезапуска.
-- Пользователь сам проходит весь сценарий двумя аккаунтами и видит обещанные сообщения.
-- Ожидание ответа переживает перезапуск; повтор известного события не создаёт новый запуск.
-- Ошибка отправки видна; неизвестный результат не выдаётся за подтверждённый успех.
-- Можно показать демонстрацию и объяснить путь конкретного запуска.
+- [Plan](docs/tasks/2026-1028-plan-start.md): assignment, architecture and decisions.
+- [Init](docs/tasks/2026-1028-init.md): delivery sequence and current state.
+- [Verification](docs/tasks/2026-1029-plan-verification.md): commands, expected results and Jev checks.
+- [Release](docs/tasks/2026-1029-plan-release-v0.1.md): deployed artifact and remaining gaps.
 
-## Документы и работа агентов
+The lead prepares assignments and reviews read-only. Workers own their assigned files; the user passes tasks and results. Independent work runs in parallel, with synchronization before the next dependent iteration. Do not start agents autonomously.
 
-- [Plan](docs/tasks/2026-1028-plan-start.md) хранит условие, контекст, исследование и технические варианты. Схемы являются предложениями, пока не подтверждены реализацией.
-- [Init](docs/tasks/2026-1028-init.md) хранит порядок поставки, зависимости, владельцев и текущий шаг.
-- Мастер-агент обсуждает решения с пользователем, готовит задания, делает readonly-проверки и сводит результаты. Он не редактирует файлы, не пишет код, не делает коммиты и не запускает агентов. Изменения выполняют воркеры; задания им передаёт пользователь.
-- Работа идёт итерациями `A1`, `A2`, `B1` и далее: внутри итерации задачи независимы, между итерациями ждём результаты всех участников и согласуем следующий раунд с пользователем.
-- Базовый состав: два воркера и research-агент GPT Astra. Ресерчер работает параллельно воркерам и приносит законченный срез на каждую синхронизацию; окончания всего исследования не ждём. Дополнительных агентов подключаем для независимых задач с понятным владением.
-- В задании указываем результат, область изменений, необходимые скиллы и способ проверки. Способ реализации оставляем агенту в рамках принятых ограничений.
-- Возврат агента: что доставлено, где результат, чем проверено, что осталось неизвестным. Блокер содержит конкретный недостающий вход и следующий шаг.
-- Токены и данные реальных переписок не попадают в Git или диагностические логи.
+A worker returns `DELIVERED` with files and verification, or `BLOCKED` with a specific missing input. Keep tokens, real messages and personal data out of Git and logs.

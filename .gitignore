@@ -3,6 +3,7 @@
 .env
 .env.*
 !.env.example
+!.example.env
 data/
 /_bin/
 /blotato.db*

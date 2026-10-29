@@ -95,6 +95,8 @@ Jev is disabled in the deployed service and local demo. `OPENROUTER_API_KEY` is 
 
 ## Run and reproduce
 
+A safe local template is available in [.example.env](.example.env). Real credentials belong in the ignored `.env` file.
+
 Go 1.26.4. Local reproduction uses fake sending, temporary SQLite and no real Meta/model calls. The [verification guide](docs/tasks/2026-1029-plan-verification.md#local-start) supplies the complete environment and API requests; environment variables override the optional `.env`.
 
 Worker-1 reported a passing full race run on 2026-10-29. The HTTP demonstration used the actual application and SQLite with a local Graph server: **three platform requests, one run, two inbox events, completed**, including restart and duplicate delivery. [Full test output](docs/assets/demo/tests.txt).

@@ -1,15 +1,14 @@
 <!-- dox-sync:managed-v1 -->
 # Blotato
 
-Перед работой прочитай [FLOW.md](FLOW.md) и [Init](docs/tasks/2026-1028-init.md). Исходное задание и технический контекст находятся в [Plan](docs/tasks/2026-1028-plan-start.md).
+Read [FLOW.md](FLOW.md) and [Init](docs/tasks/2026-1028-init.md) first. The [Plan](docs/tasks/2026-1028-plan-start.md) contains the original assignment and architecture.
 
-- Следуй первым принципам FLOW: дешёвый работающий MVP, живой Instagram e2e, облако, короткие проверяемые шаги.
-- В этом проекте пользователь явно разделил документы: `plan` описывает задачу и решение, отдельный `init` описывает исполнение. Два файла в один день и тип `init` используются намеренно.
-- Сначала читай существующий код и область изменений других агентов. Не редактируй чужой компонент без передачи владения.
-- Мастер-агент обсуждает решения с пользователем, готовит задания, делает readonly-проверки и сводит результаты. Он не редактирует файлы, не пишет код, не делает коммиты и не запускает агентов. Изменения выполняют воркеры; задания им передаёт пользователь.
-- Минимальные контракты согласуем перед параллельной реализацией. Один агент владеет общей точкой сборки и файлами зависимостей.
-- Выполняй только выданную итерацию (`A1`, `B12` и т. п.). После результата дождись общей синхронизации; самостоятельно следующий раунд не начинай. Ресерчер является отдельным параллельным участником.
-- Коммит только после явного подтверждения пользователя. Добавляй в индекс только свои проверенные изменения. Не включай чужую незавершённую работу и секреты. Push согласуется отдельно.
-- В промптах агентам называй нужные скиллы и их назначение. Не запускай других агентов самостоятельно.
-- Планы, чтение документации и локальные проверки не являются доказательством живой интеграции. Результат e2e подтверждается двумя реальными аккаунтами.
-- Исходное задание сохраняй дословно. Не создавай AI_USAGE: описание участия пользователя и агентов подготовим в README после доставки.
+- Ship a cheap, working MVP in short, verified iterations.
+- `plan` describes the problem and solution; `init` tracks execution. Multiple taskfiles on one day are intentional in this project.
+- Read existing code and respect component ownership. Agree shared contracts before parallel implementation.
+- The lead discusses decisions, prepares assignments, inspects read-only and reconciles results. Workers implement changes; the user passes assignments between agents. Do not start agents autonomously.
+- Complete only the assigned iteration, then wait for synchronization. Research runs alongside implementation.
+- Commit only with explicit user approval; push requires authorization too. Stage only relevant changes, never secrets or unrelated work.
+- Name applicable skills in worker assignments. Skills grant no additional permissions.
+- Local tests, documentation and callback challenge checks do not prove live Instagram delivery.
+- Preserve the original assignment verbatim. Describe AI use in README; do not create AI_USAGE.md.

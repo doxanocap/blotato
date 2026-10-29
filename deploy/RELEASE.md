@@ -1,26 +1,25 @@
-# Выпуск Blotato
+# Release and rollback
 
-Эта инструкция учитывает текущую конфигурацию приложения. Существующие README не обновлялись в этом раунде: сведения в них о `BLOTATO_LINK`, выборе бинарника по умолчанию и неисправленном префиксе Swagger устарели.
+## Prepare
 
-## До выпуска
+- Obtain a tested static Linux amd64 binary and its SHA-256. Check the hash before transfer.
+- Create `<root>/apps/blotato/.env` on the VPS from [instagram.env.example](instagram.env.example), owned by root with mode `0600`.
+- Required: `BLOTATO_ADMIN_TOKEN`, `INSTAGRAM_ACCOUNT_ID`, `INSTAGRAM_ACCESS_TOKEN`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `OPENROUTER_API_KEY`.
+- Use `INSTAGRAM_API_BASE=https://graph.facebook.com/v26.0`. Keep Jev disabled unless its real-provider use is intended.
+- Check free disk space and compare shared Compose/Caddy files before replacing them. SQLite stays in `<root>/data/blotato`, outside the binary directory.
 
-- Worker-1 передаёт проверенный статический бинарник Linux amd64 и его SHA-256. До публикации проверить запуск в `caddy:2-alpine` и сверить хеш. Не выбирать старый бинарник автоматически.
-- На VPS создать `<root>/apps/blotato/.env` по `instagram.env.example`, владелец root, права `0600`. Обязательны `BLOTATO_ADMIN_TOKEN`, `INSTAGRAM_ACCOUNT_ID`, `INSTAGRAM_ACCESS_TOKEN`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `OPENROUTER_API_KEY`. Секреты не передавать через аргументы команд и Git.
-- `INSTAGRAM_API_BASE` необязателен: приложение использует `https://graph.instagram.com/v26.0` по умолчанию. Ссылка для отправки задаётся в правиле через API. Compose задаёт `BLOTATO_MODE`, `BLOTATO_DB` и `BLOTATO_LISTEN`.
-- Сверить свободное место и общие Compose/Caddyfile на VPS с локальными файлами, чтобы выпуск не перезаписал чужие изменения. SQLite хранится отдельно в `<root>/data/blotato`.
+## Deploy
 
-## Выпуск после общей синхронизации
-
-Из локального `craft/apps/infra`, после сверки хеша с worker-1:
+From the separate `craft/apps/infra` checkout:
 
 ```sh
 shasum -a 256 /absolute/path/to/verified-blotato-linux-amd64
 BLOTATO_BIN=/absolute/path/to/verified-blotato-linux-amd64 ./blotato/release.sh
 ```
 
-Скрипт проверяет окружение, передаёт бинарник и общие конфигурации, сохраняет прежние версии в `.previous`, пересоздаёт только Blotato и перезагружает Caddy. SQLite не заменяется. Один комплект `.previous` перезаписывается при следующем выпуске.
+The script checks prerequisites, transfers the selected binary and configuration, saves `.previous` copies, recreates only Blotato and reloads Caddy. It preserves SQLite and other application containers. The next release overwrites the one rollback set.
 
-## Проверка после выпуска
+## Verify
 
 ```sh
 curl -fsS -o /dev/null -w 'swagger: %{http_code}\n' https://kadirbekovvv.me/blotato/swagger/index.html
@@ -29,13 +28,20 @@ curl -sS -o /dev/null -w 'workflows without token: %{http_code}\n' https://kadir
 curl -sS -o /dev/null -w 'unsigned webhook: %{http_code}\n' -X POST https://kadirbekovvv.me/blotato/webhook/instagram
 ```
 
-Ожидаются 200 для Swagger и существующих маршрутов, 401 для управления без токена и 403 для неподписанного webhook. В браузере проверить, что Swagger загружает `/blotato/swagger/openapi.json` и отправляет запросы на `/blotato/automations`. Токен вводится в Swagger только по HTTPS, не в командной строке.
+Expect 200 for Swagger, basePath `/blotato`, 401 without an administrator token and 403 for the unsigned webhook. Swagger must load `/blotato/swagger/doc.json` and target `/blotato/api/v1/workflows`.
 
-С токеном проверить чтение правил, создать проверочное правило и запомнить его ID. На VPS из `<root>/infra` выполнить `docker compose --env-file .env --profile blotato restart blotato`, затем снова прочитать правило и сравнить ID и поля. Это проверяет сохранность SQLite, а не доставку Meta. Настоящий webhook и Instagram-сценарий проверяются отдельно. Состояние и диагностика: `docker compose --env-file .env --profile blotato ps blotato` и `docker compose --env-file .env --profile blotato logs --tail=100 blotato`.
+With administrator access, create a test rule and record its ID. From `<root>/infra` on the VPS, restart only Blotato, then read the rule again:
 
-## Откат
+```sh
+docker compose --env-file .env --profile blotato restart blotato
+docker compose --env-file .env --profile blotato ps blotato
+```
 
-На VPS из `<root>/infra`:
+The rule must persist. Verify the exact callback challenge using the configured verify token without exposing it in logs. Check Meta subscriptions and real delivery separately; see the [verification guide](../docs/tasks/2026-1029-plan-verification.md).
+
+## Roll back
+
+From `<root>/infra` on the VPS:
 
 ```sh
 docker compose --env-file .env --profile blotato stop blotato
@@ -44,11 +50,11 @@ docker compose --env-file .env exec -T caddy caddy reload --config /etc/caddy/Ca
 cp docker-compose.yml.previous docker-compose.yml
 ```
 
-После первого выпуска Blotato остаётся остановленным. При обновлении, когда worker-1 подтвердит совместимость схемы БД с предыдущим бинарником, дополнительно:
+For a first deployment, leave Blotato stopped. For an upgrade, confirm that the previous binary supports the current SQLite schema, then restore it:
 
 ```sh
 cp -p ../apps/blotato/blotato.previous ../apps/blotato/blotato
 docker compose --env-file .env --profile blotato up -d --no-deps --force-recreate blotato
 ```
 
-`data/blotato` и `.env` сохраняются при откате.
+Preserve `data/blotato` and `.env` in either case.
