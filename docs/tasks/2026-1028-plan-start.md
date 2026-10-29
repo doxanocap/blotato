@@ -2,18 +2,18 @@
 name: 2026-1028-plan-start
 title: "Blotato: comment-to-DM"
 description: >
-  Изучить comment-to-DM и подготовить подход к тестовому заданию Blotato.
+  Описать реализованные правила, исполнение, надёжность и границы интеграций Blotato.
 status: active
 branch: master
 base: null
 created_at: 2026-10-28
-author: kadirbekov.eldos
+author: doxanocap
 ---
 
 ### Goal
 
 1. Разобраться, как работает comment-to-DM: продукт, интеграция с соцсетью, исполнение и сбои.
-2. Подготовить обоснование architecture, data model и execution model для тестового. Стек и архитектура пока не выбраны.
+2. Объяснить интеграцию, модель данных, исполнение и восстановление реализованного MVP на Go и SQLite. Результаты первой поставки и оставшиеся проверки описаны в [v0.1](2026-1029-plan-release-v0.1.md).
 
 ### Scope
 
@@ -52,30 +52,9 @@ author: kadirbekov.eldos
 
 3. **Зачем это нужно.** Бренд превращает комментарий в личный разговор: получает контакт и выдаёт материал без ручной обработки каждого обращения. Настройка сценария общая, но состояние и ожидание ответа принадлежат отдельному запуску. Email не означает согласие на рассылку. Пример продукта: [Manychat Auto-DM](https://help.manychat.com/hc/en-us/articles/16654065283100-Quick-Automation-Auto-DM-links-from-comments).
 
-4. **Путь события.** Это схема предметного процесса, не выбранная архитектура.
+4. **Путь события.** Бренд подключает аккаунт, посетитель комментирует пост и отвечает в DM. Meta доставляет webhook нашему сервису; сервис сохраняет событие и состояние, а затем отправляет действия через Graph API. Путь, идентификаторы и границы подтверждения показаны в [Schemas](#schemas).
 
-   ```mermaid
-   sequenceDiagram
-       participant U as Посетитель
-       participant S as Соцсеть
-       participant I as Интеграция
-       participant A as Автоматизация
-       U->>S: Комментарий pricing
-       S-->>I: Webhook комментария
-       I-->>A: Событие
-       A->>I: Ответить на комментарий и спросить email в DM
-       I->>S: Публичный ответ, затем DM
-       Note over A: Ожидание ответа
-       U->>S: Email в DM
-       S-->>I: Webhook сообщения
-       I-->>A: Событие
-       A->>I: Отправить ссылку в DM
-       I->>S: Отправка
-   ```
-
-   Интеграция подключает аккаунт, подписывается на события и принимает webhook от платформы. Для реального подключения нужно проверить подтверждение подписки, проверку подлинности запросов, идентификаторы и контракт ошибок. В задании эти операции приёма и отправки уже даны; их гарантии не указаны. Приём события, попытка отправки, подтверждение платформы и прочтение - разные результаты.
-
-5. **Что уже известно.** [Meta Private Replies](https://developers.facebook.com/documentation/instagram-platform/private-replies) описывает ограничения первого DM и окна последующего общения. [Meta Webhooks](https://developers.facebook.com/documentation/instagram-platform/webhooks) описывает повторную доставку некоторых событий. Источники прочитаны через индекс официальной документации; перед настоящей интеграцией проверить актуальные правила конкретного API. По прочитанной версии Meta: первый private reply на комментарий к посту или Reels доступен один раз в течение 7 дней; для Live действуют отдельные условия. Последующие сообщения разрешены после ответа человека в пределах 24 часов. Это ограничения конкретного канала, не универсальные правила. Порядок событий и гарантии отправки в условии не заданы.
+5. **Ограничения канала.** Первому private reply нужен комментарий, а последующему DM нужен ответ человека; для них действуют разные правила и окна. Окно приложения и окно Meta не одно и то же. См. [Private Replies](https://developers.facebook.com/documentation/instagram-platform/private-replies/) и [Unified Login](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/get-started/). Живой путь и полный доступ конкретного приложения не подтверждены; состояние Meta описано ниже.
 
 6. **Основные сложности.**
    - Повтор webhook и новый комментарий одного человека - разные события. Как не запустить сценарий дважды из-за повтора?
@@ -85,7 +64,7 @@ author: kadirbekov.eldos
    - Платформа могла отправить DM, но подтверждение потерялось. Повтор может создать дубликат; отказ от повтора - потерять сообщение. [AWS: безопасные повторы](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/); поддержка идемпотентности конкретным API пока неизвестна.
    - Публичное «Sent you a DM!» может появиться до отказа DM. Как объяснить частичный успех?
    - Ответ и истечение срока могут происходить одновременно. Нужны правило победителя и определение времени, по которому оно работает.
-   - Фильтр должен различать подходящий комментарий, служебное событие и исходящее эхо. Правила регистра, целого слова и неверного ввода пока открыты. Примеры типов событий: [Meta Webhook Examples](https://developers.facebook.com/documentation/instagram-platform/webhooks/examples).
+   - Фильтр должен различать подходящий комментарий, служебное событие и исходящее эхо. Текущий MVP ищет подстроку без учёта регистра; чистый email принимает без модели. Включаемый отдельно Jev классифицирует намерение использовать один адрес внутри фразы; качество настоящей модели не измерено. Примеры типов событий: [Meta Webhook Examples](https://developers.facebook.com/documentation/instagram-platform/webhooks/examples).
    - Отключить новые запуски, завершить ожидания и отменить ещё не отправленные сообщения - разные действия. Изменение ссылки также ставит вопрос о версии предложения для уже начатого разговора.
    - Несколько брендов, ограничение скорости, отзыв доступа и ручное вмешательство требуют изоляции аккаунтов и понятной причины остановки. Email не должен без необходимости попадать в логи.
    - Для поддержки нужно восстановить путь конкретного запуска: какой комментарий подошёл, что отправлено, что ожидается и почему произошёл отказ. Число запусков, полученных email и отправленных ссылок - разные показатели; принятие платформой не означает прочтение или продажу.
@@ -102,172 +81,276 @@ author: kadirbekov.eldos
 
 8. **Что проверяет тестовое.** Прямо указаны architecture, data model, execution model, надёжность, конкурентность и обоснование расширяемости. Наш вывод: стоит показать последствия продуктовых правил при сбоях и явно назвать границы гарантий. Внутренние критерии оценки и ожидаемый объём реализации неизвестны.
 
-9. **Как двигаться.**
-   1. Описать правила одного сценария: старт, повторное участие, ввод, ожидание, завершение и ошибки.
-   2. Разобрать несколько ожидающих сценариев, конкурентный ответ и неизвестный результат отправки. Сравнить последствия вариантов.
-   3. Проверить один близкий сценарий и сравнить: один тип кампании проще, но каждое расширение потребует кода; небольшой набор действий гибче, но добавляет правила их сочетания. Универсальная платформа существенно расширяет задачу.
-   4. После выбора поведения описать данные, исполнение и гарантии интеграции. Определить, нужен ли небольшой исполняемый пример и что он должен проверять.
+9. **Текущий выбор.** Один процесс Go, SQLite, один сценарий и одно активное прохождение на пару аккаунт бренда / посетитель. Правила обработки и ограничения текущего кода показаны ниже. Общая последовательность и владельцы находятся в [init](2026-1028-init.md), конкретные оставшиеся действия и критерии первой поставки в [v0.1](2026-1029-plan-release-v0.1.md).
 
-10. **Открытые решения.**
-   - Как отличать повтор доставки от нового участия?
-   - Какой запуск получает ответ, если ждут несколько?
-   - Когда повторять отправку с неизвестным результатом?
-   - Что делать с ожиданиями при отключении или изменении сценария?
-   - Как обрабатывать неверный email, молчание и истечение срока?
-   - Какой объём расширяемости и примера оправдан? Какие гарантии интеграции допустимо предположить?
+10. **Что остаётся проверить.** Реальное сопоставление идентификаторов аккаунта и контакта, доставка обеих оболочек комментария, доступ приложения к webhook и результат живых вызовов. Разрешение `unknown` и политика поздней доставки требуют отдельного решения.
 
-11. Этот plan хранит контекст и варианты решения. Порядок реализации, проверки двумя аккаунтами и облачной поставки находится в отдельном [init](2026-1028-init-mvp-delivery.md); принципы работы - в [FLOW.md](../../FLOW.md). Технические схемы ниже не обязывают включать все компоненты в MVP.
+### Подключение Instagram: фактический путь и границы
+
+Выбран **Instagram API with Unified Login**, **Business Integration System User Access Token (SUAT)** и `https://graph.facebook.com/v26.0`. Старые инструкции про Instagram User token, `graph.instagram.com`, `instagram_business_*` и его 60-дневное обновление к этому подключению не применяются. Meta прямо сообщает, что новые приложения больше не могут настраивать прежний Instagram Login: [migration guide](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/migration-guide/).
+
+#### Что требуется и что установлено
+
+| Этап | Факт и уровень подтверждения |
+|---|---|
+| Аккаунты | Документация требует Professional (Business/Creator) аккаунт бренда и business portfolio. Для проверки нужен второй реальный аккаунт посетителя. Текущий тип бренда, его роль и Allow access to messages в этой финализации самостоятельно не проверялись. |
+| Приложение и portfolio | На прочитанном экране Dashboard приложения видно подключённое business portfolio. Оно отмечено «Не подтверждено». Владение portfolio и Business Verification являются разными этапами. |
+| Путь авторизации | Ранее на экране был только API setup with Facebook login. После исследования выбран Unified Login; код и переданное окружение используют `graph.facebook.com`. Наличие конфигурации и токена само по себе не подтверждает все разрешения. |
+| SUAT и AccountID | Пользователь подготовил credentials; worker-2 сообщил о переносе заполненного окружения на VPS. Токен для выбранного пути: SUAT; `INSTAGRAM_ACCOUNT_ID` должен быть ID бренда из `/me/assigned_instagram_accounts`, а не system user из `/me`. В этом срезе ответ Meta со списком аккаунтов и granted permissions не проверялся. |
+| Сервер | Worker-2 сообщил о публикации проверенного бинарника, защищённом окружении, постоянной SQLite и выключенном Jev. Независимый GET подтвердил HTTP 200 для публичных Swagger UI и спецификации с `basePath=/blotato`. |
+| Challenge | Worker-2 проверил точный GET challenge (200), неправильный verify token (403) и неподписанный POST (403). Это проверка сервера; отдельное принятие callback самой Meta из этого отчёта не следует. |
+| Подписки | Подтверждения обеих подписок `comments,messages`, приложения и аккаунта, в доступном отчёте нет. Состояние не следует выводить из наличия токена или challenge. |
+| App Review | Самостоятельно прочитан экран «Запрос на проверку приложения» → «Подтверждение»: требуется подключить подтверждённое business portfolio; текущее «Не подтверждено», приложение «Не опубликовано». App Review не завершён; подтверждённого отказа нет. Это конкретный незавершённый шаг заявки, но не доказательство причины отсутствия любого тестового webhook. |
+| Живой сценарий | Получение настоящих comments/messages, совпадение scoped ID и три видимых сообщения двумя аккаунтами не подтверждены. |
+
+[Unified Login Get Started](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/get-started/) описывает Professional account, владение приложением business portfolio, Facebook Login for Business, получение SUAT и `/me/assigned_instagram_accounts`. Standard Access документирован для тестов с людьми, имеющими роль в приложении; для других клиентов нужны Advanced Access и Live. Эти условия не являются доказательством соответствия наших аккаунтов. [Eligibility](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/eligibility-and-troubleshooting/) помогает различать недоступную вкладку, несовместимую конфигурацию и настройки сообщений.
+
+#### Серверные настройки и контракт
+
+Секреты вводятся пользователем в закрытое окружение VPS, не в README, чат или публичный Swagger. Содержимое окружения при подготовке этого документа не читалось.
+
+| Переменная | Назначение |
+|---|---|
+| `BLOTATO_MODE=instagram` | Выбор реального адаптера, без fake-маршрутов. |
+| `BLOTATO_DB` | Постоянный файл SQLite, один процесс на базу. |
+| `BLOTATO_LISTEN` | Адрес HTTP listener, доступный reverse proxy. |
+| `SWAGGER_BASE_PATH=/blotato` | Префикс опубликованных API-запросов. |
+| `INSTAGRAM_API_BASE=https://graph.facebook.com/v26.0` | Текущий default в коде. |
+| `INSTAGRAM_ACCESS_TOKEN` | SUAT выбранной конфигурации Meta. |
+| `INSTAGRAM_ACCOUNT_ID` | ID Professional аккаунта бренда из `GET /me/assigned_instagram_accounts?fields=id,username`. |
+| `INSTAGRAM_REQUEST_TIMEOUT=10s` | Ограничение времени запроса Instagram. |
+| `META_APP_SECRET` | App Secret Meta-приложения для HMAC исходного тела POST. |
+| `META_VERIFY_TOKEN` | Наша случайная строка, совпадающая с настройкой callback. Это не Meta access token. |
+| `BLOTATO_ADMIN_TOKEN` | Наш отдельный Bearer для создания/просмотра правил и runs. |
+| `OPENROUTER_API_KEY` | Ключ другого провайдера. Код требует непустое значение даже при выключенном Jev. |
+| `BLOTATO_EMAIL_INTENT_ENABLED=false` | Jev выключен по умолчанию и, по отчёту worker-2, при выпуске. |
+
+Для нашего сценария документированы `instagram_basic`, `instagram_manage_comments`, `instagram_manage_messages`; фактические grants/уровни доступа нужно проверять отдельно. Срок SUAT зависит от конфигурации; он не наследует 60-дневный refresh прежнего Instagram User token. Отзыв доступа или перенос аккаунта между portfolio также могут прекратить доступ. [Authentication](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/authentication/), [Permissions](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/permissions/).
+
+Callback: `https://kadirbekovvv.me/blotato/webhook/instagram`. Для Unified Login используется объект Instagram в Webhooks Meta-приложения. Выбор полей приложения `comments,messages` и подписка бренда через `/{IG_ID}/subscribed_apps` являются отдельными операциями. Сервер не создаёт их автоматически. GET challenge подтверждает проверку endpoint; только настоящий подписанный POST и сохранённое событие доказывают вход конкретного события. [Webhook setup](https://developers.facebook.com/documentation/instagram-platform/webhooks/setup/), [migration guide](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/migration-guide/).
+
+| Операция | Реализованная адресация и проверка |
+|---|---|
+| Публичный ответ | `POST /{CommentID}/replies`, `message`; подтверждение `id`. |
+| Первый private reply | `POST /{AccountID}/messages`, `recipient.comment_id`, `message.text`; ожидаются `message_id` и `recipient_id`. |
+| Следующий DM | Тот же messages endpoint, но `recipient.id=ContactID`; Go сверяет `recipient_id` с контактом run. |
+| Комментарий | Поддержаны `entry.field/value` и `entry.changes[]`; `comment_id` имеет приоритет, затем `id`. `from.id` становится ContactID; `entry.id` должен совпасть с AccountID. Поддержка alias в коде не доказывает конкретную оболочку живого события. |
+| DM | `sender.id` → ContactID, `message.mid` → EventID, `timestamp` в миллисекундах → OccurredAt. `recipient.id` сверяется с брендом, echo/self/deleted/unsupported отсекаются. |
+
+Sources: [клиент](../../internal/clients/instagram/client.go), [public reply](../../internal/clients/instagram/comments.go), [messages](../../internal/clients/instagram/messages.go), [webhook](../../internal/io/api/controllers/workflows/post_instagram_webhook.go), [конфигурация](../../internal/pkg/config/model.go), [официальные примеры webhook](https://developers.facebook.com/documentation/instagram-platform/webhooks/examples/).
 
 ### Decisions
 
-1. Здесь сохраняем исследование и технические варианты; текущую траекторию дешёвого живого MVP определяют FLOW и init. Открытые решения выбираем по мере необходимости поставки.
-2. Git инициализирован локально, ветка `master`; remote `origin` настроен, база для этой задачи не выбрана.
+1. Один Go-процесс, SQLite, один аккаунт бренда, один фиксированный порядок шагов. Правила настраивают тексты, ключевое слово и ссылку; они не являются универсальным графом.
+2. Для Meta выбран Unified Login/SUAT. Публикация нашего сервиса, публикация Meta app, разрешения, подписки и живой проход проверяются отдельно.
+3. `unknown` останавливает run без автоматического повтора. Exactly-once внешней отправки не обещается.
+4. Jev является дополнительной классификацией ответа, выключенной по умолчанию. Решение о состоянии, адресате и отправке остаётся у Go. Реальное качество модели и выбранного confidence не измерено.
+5. Для другого сценария нужны отдельные переходы, тип/версия и сохраняемые поля, затем проверки восстановления. Общие inbox/actions можно переиспользовать. Типы сценариев, редактор графа и ручное разрешение unknown пока отсутствуют.
 
 ### Changes
 
-1. `docs/tasks/2026-1028-plan-start.md` - объединены условие, источники и предлагаемая техническая модель.
-2. Текущая траектория поставки и распределение работы вынесены в отдельный init; технические варианты сохранены как контекст.
-
+1. Сохранено исходное ТЗ дословно; исследовательские источники оставлены как контекст, не как доказательство реализации.
+2. 2026-10-29: описание и управляемые схемы сверены с правилами, исполнителем, SQLite, Unified Login и отдельной задачей Jev в текущем рабочем дереве.
+3. Удалены противоречащие выбранному пути инструкции Instagram Login. Точный этап App Review отделён от отказа и от недоказанной причины остановки живого теста.
+4. Результаты worker-1/worker-2 и самостоятельные проверки сведены в [v0.1](2026-1029-plan-release-v0.1.md). Основная инструкция: [Как проверить решение](2026-1029-plan-verification.md).
 
 ## Schemas
 <!-- dox-schema:managed-v1 -->
 
-Все схемы и контракты ниже - **наш рабочий пример**, не API Meta и не описание внутренностей Blotato. Это модель для проверки вариантов: хранение и фоновая обработка могут быть реализованы разными технологиями. Ни сервис, ни гарантии внешней интеграции не проверены.
+Срез прочитанного рабочего дерева от 2026-10-29, включая ещё не закоммиченные изменения. Схемы описывают код; результаты прогонов и выпуска имеют отдельные источники в [v0.1](2026-1029-plan-release-v0.1.md). Не считать HEAD идентификатором всей этой реализации.
 
 ### Usecase
 
 ```mermaid
 flowchart LR
-    S["Соцсеть"] --> I["Приём событий"]
-    I --> E["Обработка и сопоставление"]
-    E --> D["Состояние и команды"]
-    D --> W["Фоновая отправка"]
-    W --> X["Существующая интеграция"]
-    X --> S
-    S --> I
+    A["PostWorkflow → automation.CreateWorkflow"] --> D["SQLite: workflows, inbox, runs,<br/>actions, email_decisions"]
+    H["PostInstagramWebhook → Receive<br/>resolver: первое правило по ID"] --> D
+    D --> W["WorkflowJob → Work<br/>ExpireRuns → ClaimAction"]
+    W --> P["Instagram: публичный ответ,<br/>private reply, следующий DM"]
+    P -->|"finish → advance"| D
+    D --> E["EmailDecisionJob<br/>один кандидат → EMAIL_0"]
+    E --> J["Jev: решение о намерении"]
+    J -->|"Go проверяет решение и актуальность run"| D
 ```
 
-Sources: исходное задание выше; остальные связи - предлагаемая модель.
+Sources: [правила](../../internal/domain/service/automation/workflows.go), [resolver](../../internal/domain/service/resolver/workflows.go), [Receive](../../internal/domain/service/workflow/events.go), [Work](../../internal/domain/service/workflow/actions.go), [классификация](../../internal/domain/service/workflow/email_decision.go), [сборка](../../internal/app/api/app.go).
+
+**Правило и run.** `POST /api/v1/workflows` валидирует и сохраняет `keyword`, `public_reply`, `email_question`, `link`. `GET` возвращает правила по возрастанию ID; resolver выбирает первое совпадение подстроки без учёта регистра. Например, если `pric` и `pricing` оба подходят к тексту, выигрывает правило с меньшим ID, а не с более длинным словом. Нет выбора нескольких правил или очереди следующих совпадений.
+
+`NewRun` копирует ID правила, keyword, тексты и ссылку; `wait_ms` фиксирует 24 часа из сервиса. Это снимок одного прохождения. API изменения/удаления правила и отдельного номера версии нет; новый порядок шагов требует кода. Ссылка не загружается заново из правила при отправке.
 
 ### Implementation
 
-Один проход: `account=a1`, `contact=u1`, `comment=c1`, `run=r1`. Для примера считаем, что идентификаторы события и отправителя устойчивы внутри аккаунта, а интеграция различает входящие сообщения и эхо. Это нужно проверить для реального контракта.
+```mermaid
+sequenceDiagram
+    participant H as HTTP Controller
+    participant S as workflow.Service
+    participant R as resolver.Service
+    participant D as SQLite Repository
+    participant W as WorkflowJob
+    participant P as Instagram Client
+    H->>S: Receive comment
+    S->>D: Tx CreateInboxEvent
+    S->>R: GetWorkflowForComment
+    R->>D: GetWorkflows ORDER BY id
+    R-->>S: Первое совпадение
+    S->>D: CreateRun snapshot, CreateAction reply_comment, ProcessInboxEvent
+    D-->>S: Commit
+    S-->>H: Сохранено
+    Note over H: HTTP 200 после всех значимых событий пакета
+    W->>S: Work
+    S->>D: ExpireRuns, Tx ClaimAction pending → sending
+    D-->>S: Commit и команда
+    S->>P: ReplyComment CommentID
+    P-->>S: ID ответа
+    S->>D: Tx finish: accepted, question_pending, ask_email
+    W->>S: Work и claim следующего действия
+    S->>P: PrivateReply AccountID, recipient.comment_id
+    P-->>S: message_id, recipient_id
+    S->>S: Сверить ID и адресата
+    S->>D: Tx finish: waiting_email, deadline, deferred
+    H->>S: Receive message с OccurredAt
+    S->>D: Tx inbox, GetActiveRun
+    alt Чистый email до deadline
+        S->>D: UpdateRunEmail, CreateAction send_link
+    else Jev включён и ожидание открыто
+        S->>D: QueueEmailDecision
+    end
+    S->>D: ProcessInboxEvent и commit
+    Note over D: Классификация отдельно, может создать send_link позже
+    W->>S: Work и claim send_link
+    S->>S: Проверить AnswerAt и окно Meta
+    S->>P: SendMessage AccountID, recipient.id
+    P-->>S: message_id, recipient_id
+    S->>D: Tx finish: accepted, completed
+```
 
 ```mermaid
 sequenceDiagram
-    participant S as Соцсеть
-    participant I as Приём
-    participant DB as Хранилище
-    participant E as Обработчик
-    participant W as Отправка
-    participant P as Интеграция
-    S->>I: comment c1 / pricing
-    I->>DB: Сохранить event e1
-    I-->>S: Подтвердить после commit
-    E->>DB: e1 → r1 + команда публичного ответа
-    W->>DB: Захватить команду
-    W->>P: Ответить на c1
-    P-->>W: accepted / внешний id
-    W->>DB: Результат + команда вопроса
-    W->>DB: Захватить команду вопроса
-    W->>P: Спросить email в DM
-    P-->>W: accepted / внешний id
-    W->>DB: Результат + ожидание ответа
-    S->>I: message m1 / email
-    I->>DB: Сохранить event e2
-    I-->>S: Подтвердить после commit
-    E->>DB: Сопоставить e2 и r1, создать команду ссылки
-    W->>DB: Захватить команду ссылки
-    W->>P: Отправить ссылку
-    P-->>W: accepted / внешний id
-    W->>DB: Результат + завершить r1
+    participant E as EmailDecisionJob
+    participant S as workflow.Service
+    participant D as SQLite Repository
+    participant J as Jev Client
+    E->>S: WorkEmailDecision
+    S->>D: NextEmailDecision pending ORDER BY event_id
+    D-->>S: Сохранённое сообщение и run_id
+    S->>S: Извлечь и проверить один email
+    alt Один допустимый кандидат
+        S->>J: Decide text с EMAIL_0, вне Tx
+        J-->>S: choice, model, confidence или error
+    else Нет единственного кандидата
+        S->>S: decision = invalid, без API
+    end
+    S->>D: Tx FinishEmailDecision pending → done
+    opt EMAIL_0 и confidence >= 0.95
+        S->>D: ApplyEmailDecision с проверкой состояния и deadline
+        D->>D: link_pending и CreateAction send_link при успешном UPDATE
+    end
+    D-->>S: Commit
 ```
 
-Sources: исходное задание; события, команды, границы commit и результаты - наш пример.
+Sources: [events/deferred](../../internal/domain/service/workflow/events.go), [actions](../../internal/domain/service/workflow/actions.go), [email decision](../../internal/domain/service/workflow/email_decision.go), [email SQL](../../internal/repo/sqlite/email_decisions.go), [transactions](../../internal/repo/sqlite/base/repo.go), [scheduler](../../internal/app/worker/worker.go), [workflow job](../../internal/app/worker/workflow_job.go), [decision job](../../internal/app/worker/email_decision_job.go).
 
-**Контракты.** Примеры намеренно сокращены. `event_id` ниже - устойчивый идентификатор исходного события, если интеграция его предоставляет; собственный `inbox_id` не заменяет его для дедупликации.
+- Приём одного события, его inbox и немедленный переход выполняются в одной транзакции. Повтор пакета после 503 безопасен для уже сохранённых EventID. Ошибка Bind или неполные поля дают 400; неподписанный POST 403. HMAC-SHA256 вычисляется по исходным байтам до Bind.
+- Один процесс запускает **две отдельные петли задач**: workflow и email_decision. Одна петля отправляет действия, другая ждёт классификацию. Общий пул SQLite ограничен одним соединением; сетевые вызовы не держат транзакцию.
+- `ClaimAction` переводит pending в sending и коммитит до HTTP; `finish` сохраняет результат и следующий шаг атомарно. `ExpireRuns` выполняется перед каждым claim, даже при непустой очереди, но не является отдельным таймером во время зависшего запроса Instagram.
+- `RecoverSending` при старте и после ошибки workflow переводит прерванные sending и их runs в unknown. При остановке обе задачи отменяются, приложение ждёт их завершения до закрытия SQLite.
+- HTTP 200 с непустым внешним ID и правильным recipient позволяет записать accepted. Транспортная ошибка, неправильный JSON, пустой ID или другой recipient дают unknown. Реальный клиент трактует **любой non-200** как `ErrUnexpectedResponse` → unknown, включая 4xx/429/5xx; нет автоматического повтора. Определённые локальные отказы до вызова дают rejected/failed. Fake умеет имитировать отказ; его retryable также становится отказом без повтора.
+- `GET /api/v1/workflows/runs` возвращает строки run × action со статусами и кодами ошибок, без email/текста. Это не полный журнал входящих событий и не API таблицы email_decisions. В Instagram управление защищено Bearer, fake-маршруты отсутствуют.
 
-```json
-{"kind":"comment.created","event_id":"c1","account_id":"a1","contact_id":"u1","post_id":"p1","text":"pricing","occurred_at":"2026-10-28T10:00:00Z"}
-{"kind":"message.received","event_id":"m1","account_id":"a1","contact_id":"u1","text":"person@example.com","occurred_at":"2026-10-28T10:05:00Z"}
-{"command_id":"cmd1","run_id":"r1","kind":"reply_comment","account_id":"a1","comment_id":"c1","text":"Sent you a DM!"}
-{"command_id":"cmd2","run_id":"r1","kind":"send_question","account_id":"a1","contact_id":"u1","comment_id":"c1","text":"What is your email address?"}
-{"command_id":"cmd3","run_id":"r1","kind":"send_link","account_id":"a1","contact_id":"u1","text":"https://example.com/pricing"}
-{"command_id":"cmd2","outcome":"accepted","external_message_id":"out2"}
-```
+**Jev.** Клиент использует `POST https://openrouter.ai/api/alpha/decisions`, запрос `model=typesafe/jev-1.14`, допускает ответ только `typesafe/jev-1.14-20261014`, `answers.intent.type=choice`, choice из `EMAIL_0/reject/uncertain` и confidence в `[0,1]`. Версия инструкции `email-intent-v1`, порог `0.95` экспериментальный. Timeout HTTP 5 секунд, ответ ограничен 64 KiB. Эти значения подтверждены текущим кодом; успешный вызов провайдера и качество модели не подтверждены.
 
-`accepted` означает подтверждение интеграции, не прочтение. Другие результаты: `retryable` - доказано, что действие не выполнено и повтор разрешён; `rejected` - постоянный отказ; `unknown` - отправка могла состояться. Если интеграция не различает эти случаи, считать неоднозначный результат `unknown`. `command_id` служит нашей идентичностью намерения; внешний ключ идемпотентности передаётся только если реальный контракт его поддерживает.
+Go сначала проверяет чистый email без модели. Иначе при включённой функции сохраняет задачу, извлекает ровно один допустимый кандидат и заменяет его на `EMAIL_0`. Остальной текст передаётся провайдеру: это не полное удаление личных данных. Модель не получает IDs адресата, токен Meta или команды отправки. Ответ лишь предлагает использовать найденный адрес; Go проверяет состояние run, отсутствие уже принятого email, `received_at < deadline` и **текущее время до deadline**. Ошибка/отказ/неоднозначность оставляют ожидание открытым; нового уточняющего DM или состояния cancelled нет.
 
-Сопоставление в этом примере: `e1` ищет активное правило аккаунта `a1`, подходящее посту и тексту; `e2` ищет ожидающий запуск по `(account_id, contact_id)`. Вариант модели допускает один активный запуск на эту пару. Атомарный резерв пары создаётся вместе с `run` до отправки вопроса и удерживается до завершения, ошибки или отмены. Новый подходящий комментарий сохраняется в отложенном inbox, но запуск откладывается до освобождения пары; для явного нового комментария создаётся отдельный запуск. Альтернатива - несколько ожиданий: нужны приоритет или явный идентификатор запроса в ответе; применение одного ответа ко всем меняет продуктовую семантику. Один лишь порядок webhook не доказывает намерение человека.
+`email_decisions` хранит pending/done. После сохранения done повтор EventID не вызывает классификацию снова. До записи результата задача остаётся pending: сбой процесса или commit может привести к повторному inference и расходу. Нет durable claim/lease и гарантии одного вызова провайдера; поддерживается одна петля классификации, не несколько процессов. Уже неактуальная pending задача всё ещё может вызвать модель, но SQL не применит её ответ к закрытому run. Сохранённый `error` автоматически не повторяется.
 
-**Границы работы.**
-
-1. Приём проверяет происхождение и нормализует событие, затем в одной транзакции вставляет inbox с уникальным ключом `(platform, account_id, kind, event_id)`. Подтверждение webhook - после commit. При сбое до commit источник может повторить доставку, если его контракт это допускает. При отсутствии устойчивого внешнего ID нельзя обещать такую дедупликацию: нужна отдельная политика и контракт интеграции.
-2. Обработчик в транзакции блокирует или условно захватывает inbox, проверяет правило, создаёт `run` и `cmd1`, отмечает событие обработанным. Уникальность `(account_id, automation_version_id, trigger_event_id)` не даёт создать второй запуск из того же триггера. Для ответа транзакция связывает inbox с ожиданием, сохраняет email, закрывает ожидание и создаёт `cmd3`. Внешних вызовов внутри транзакции нет.
-3. Фоновый исполнитель атомарно захватывает готовую команду с lease и номером попытки, фиксирует `sending`, затем вызывает интеграцию вне транзакции. После результата отдельная транзакция сохраняет исход и продвигает запуск или создаёт следующую команду. Уникальность `(run_id, step)` не даёт создать одно намерение дважды. Подтверждённый `cmd1` создаёт `cmd2`; подтверждённый `cmd2` открывает ожидание; подтверждённый `cmd3` завершает запуск. Очерёдность соответствует условию.
-4. Если процесс упал до вызова, после вызова или до записи результата, один истёкший lease не доказывает, что отправки не было. Восстановление переводит такую попытку в `unknown`, если нельзя доказать отсутствие вызова. Не отправлять её автоматически повторно без подтверждённой идемпотентности или проверки у провайдера. Это консервативный вариант: возможна потеря сообщения. Другой вариант - повтор с риском дубликата; его нужно выбрать отдельно.
-
-**Ранний ответ и срок.** Сообщение всегда сначала сохраняется в inbox, даже если вопрос ещё находится в `sending` или `unknown`. Обработчик не помечает подходящее сообщение окончательно неприменимым, пока исход вопроса не разрешён: оно остаётся `deferred`. После подтверждения `cmd2` повторно проверяем отложенные сообщения этого аккаунта и контакта. Сообщение нельзя применять к ещё не отправленному вопросу без правила: в этом примере принимаем только входящее сообщение, сохранённое после начала попытки `cmd2`; старые сообщения не переиспользуем. Это допущение, а не доказательство ответа именно на вопрос.
-
-Срок в примере - 24 часа от записи подтверждения `cmd2` в нашем хранилище; это правило продукта для примера, не утверждение об окне Meta. Используем время **приёма в хранилище**, а не непроверенные часы платформы. Приём и timeout координируются по блокировке одного ожидания: приём присваивает `received_at` на стороне хранилища и фиксирует событие под этой блокировкой; timeout после захвата сначала проверяет подходящие зарегистрированные сообщения с `received_at < deadline`. Ровно в `deadline` побеждает timeout. Если событие доставлено платформой после срока, оно опоздало по этому правилу, даже если пользователь написал раньше. Обработка сообщений также атомарно захватывает ожидание; уникальная связь `inbox_id` с обработкой и условное обновление открытого ожидания исключают два победивших продолжения. Альтернатива - время платформы и период задержки для поздней доставки: точнее к времени пользователя, но зависит от достоверности времени и верхней границы задержки.
+Sources: [Jev HTTP](../../internal/clients/jev/client.go), [Go-проверки](../../internal/domain/service/workflow/email_decision.go), [SQL guard](../../internal/repo/sqlite/email_decisions.go), [config/startup](../../internal/app/api/app.go), [инструкция проверки Jev](2026-1029-plan-verification.md#jev).
 
 ### Domain
 
 ```mermaid
 erDiagram
-    AUTOMATION_VERSION ||--o{ RUN : defines
-    RUN ||--o{ COMMAND : creates
-    RUN ||--o| WAIT : holds
-    INBOX ||--o| RUN : triggers
-    INBOX o|--o| WAIT : answers
+    WORKFLOWS o|--o{ RUNS : snapshots
+    RUNS ||--o{ ACTIONS : creates
+    RUNS o|..o{ INBOX : deferred_logical_link
+    INBOX ||--o| EMAIL_DECISIONS : classified_by
+    RUNS ||--o{ EMAIL_DECISIONS : waits_for
+    WORKFLOWS {
+        integer id PK
+        string keyword
+        string public_reply
+        string email_question
+        string link
+    }
+    INBOX {
+        integer id PK
+        string platform
+        string account_id
+        string contact_id
+        string kind
+        string event_id
+        string text
+        integer received_at
+        integer occurred_at
+        string status
+        integer run_id
+    }
+    RUNS {
+        integer id PK
+        integer workflow_id FK
+        string keyword
+        string account_id
+        string contact_id
+        string comment_id
+        string state
+        string reply
+        string question
+        string link
+        integer wait_ms
+        integer deadline
+        string email
+        integer answer_at
+        string error_code
+    }
+    ACTIONS {
+        integer id PK
+        integer run_id FK
+        string step
+        string status
+        string external_id
+        string error_code
+    }
+    EMAIL_DECISIONS {
+        integer event_id PK,FK
+        integer run_id FK
+        string status
+        string decision
+        string model
+        string instruction_version
+        real confidence
+    }
 ```
 
-Sources: поля и связи ниже - предлагаемая модель, не существующая схема данных.
+Sources: [SQL schema](../../migrations/sqlite/001_init.sql), [Run snapshot](../../internal/domain/entity/run.go), [inbox](../../internal/repo/sqlite/inbox.go), [runs](../../internal/repo/sqlite/runs.go), [actions](../../internal/repo/sqlite/actions.go), [email_decisions](../../internal/repo/sqlite/email_decisions.go), [SQLite startup](../../internal/pkg/sqlite/sqlite.go).
 
-| Сущность | Поля и смысл | Ограничение |
-|---|---|---|
-| `automation_version` | `id`, `account_id`, условие, тексты, ссылка, `active` | Версия неизменяема после публикации; запуск фиксирует её `id`. Отключение новых запусков отдельно от отмены существующих. |
-| `inbox` | `id`, `platform`, `account_id`, `kind`, `event_id`, `contact_id`, `payload`, `received_at`, `status` | Уникальный внешний ключ события в пределах платформы, аккаунта и типа; `deferred` сохраняет ранний ответ. Срок хранения и доступ к payload ограничены. |
-| `run` | `id`, `automation_version_id`, `account_id`, `contact_id`, `trigger_event_id`, `state`, `version` | Уникальный триггер на версию правила; уникальный активный резерв `(account_id, contact_id)` и `version` или блокировка защищают конкурентный переход. |
-| `wait` | `run_id`, `account_id`, `contact_id`, `status`, `opened_at`, `deadline`, `answer_inbox_id`, `email` | Один открытый wait на `(account_id, contact_id)` в выбранном варианте; один ответ применяется к одному wait. Email хранить с ограничением доступа и срока. |
-| `command` | `id`, `run_id`, `step`, `target`, `payload`, `status`, `attempt`, `lease_until`, `external_id`, `error_class` | Один логический шаг на `(run_id, step)`; `sending` после истечения lease не считается неотправленным. |
+`workflows` хранит общие настройки; `runs` отдельное прохождение и снимок. `inbox.event_id` является внешним ID, а `email_decisions.event_id` ссылается на внутренний `inbox.id`. `actions.run_id`, `email_decisions.run_id` и `runs.workflow_id` имеют FK; `inbox.run_id` логическая связь только для deferred, без FK. Обычные события не получают полный backlink к run. Исходный комментарий связан через account и `runs.comment_id`.
 
-Для диагностирования повторов полезен отдельный журнал попыток: `command_id`, `attempt`, время, исход и внешний ID. Не писать туда содержимое email или секреты. Если продукт разрешит несколько ожиданий, уникальность по паре нужно заменить явной политикой выбора; если одну реплику применять ко многим запускам, связь ответа и ожиданий станет многие-ко-многим.
+Уникальности: inbox `(platform, account_id, kind, event_id)`; actions `(run_id, step)`; одна email_decision на inbox ID; один активный run на `(account_id, contact_id)` в `reply_pending/question_pending/waiting_email/link_pending/unknown`. После completed/failed/expired новый комментарий может создать новый run. Порядок успеха: `reply_pending → question_pending → waiting_email → link_pending → completed`.
 
-**Согласованный пример данных.** `e1` и `e2` - наши локальные `inbox.id`; `c1` и `m1` - внешние идентификаторы событий. Время указано только для примера.
-
-| Момент | Записи после фиксации транзакции |
+| Ситуация | Фактическое поведение |
 |---|---|
-| Настройка | `automation_version v1`: `account_id=a1`, слово `pricing`, ссылка `https://example.com/pricing`, `active=true`. |
-| Комментарий | `inbox e1`: `event_id=c1`, `contact_id=u1`, `processed`; `run r1`: `version_id=v1`, `trigger_event_id=c1`, `state=reply_pending`; `cmd1`: `step=reply_comment`, `pending`. |
-| Публичный ответ принят | `cmd1=accepted`, `external_id=out1`; `r1=question_pending`; `cmd2`: `step=send_question`, `pending`. |
-| Вопрос принят в 10:01 | `cmd2=accepted`, `external_id=out2`; `r1=waiting_email`; `wait`: `run_id=r1`, `open`, `opened_at=2026-10-28T10:01:00Z`, `deadline=2026-10-29T10:01:00Z`. |
-| Сообщение в 10:05 | `inbox e2`: `event_id=m1`, `received_at=2026-10-28T10:05:00Z`, `processed`; `wait=answered`, `answer_inbox_id=e2`, `email=person@example.com`; `r1=link_pending`; `cmd3`: `step=send_link`, `pending`. |
-| Ссылка принята | `cmd3=accepted`, `external_id=out3`; `r1=completed`. Это не подтверждает прочтение ссылки. |
+| Повтор EventID | Вставка inbox ничего не меняет; действий и классификаций повторно не создаёт. |
+| Новый комментарий при активном run | Сохраняется обработанным, без нового run и без очереди на будущее. |
+| Два чистых email | Транзакции сериализуются одним соединением SQLite; первый принятый переводит run в link_pending, второй уже не продолжает его. |
+| Фраза и чистый email одновременно | Классификация асинхронна; более поздний чистый email может выиграть. ApplyEmailDecision проверяет waiting_email/email IS NULL и не перезаписывает победителя. |
+| Ранний ответ | При ask_email в sending/unknown сохраняется deferred. После accepted вопроса чистые email просматриваются по inbox ID; фразы при включённом Jev ставятся в отдельную очередь. Чистый адрес может обойти более раннюю фразу. До начала отправки вопроса ответ игнорируется. При unknown без подтверждения продолжения нет. |
+| Перезапуск | Ожидания, pending actions и pending decisions остаются в SQLite; sending actions становятся unknown. Потеря диска и несколько процессов не покрыты. |
+| Unknown отправки | Частичный результат сохраняется, следующий шаг не создаётся, повтор и ручное разрешение не реализованы. Run блокирует новое прохождение контакта. |
+| Срок | Прямой ответ требует received_at до deadline и waiting_email. Jev дополнительно проверяет текущее время при применении. Задержанная доставка или медленная классификация могут быть отвергнуты. |
+| Ошибка Jev | Done/error или другое непринятое решение не создаёт send_link, ожидание остаётся открытым до допустимого ответа или expiry. |
 
-**Состояния одного запуска.** `unknown` и `failed` сохраняют причину и шаг; они не означают завершение отправки.
+**Два окна.** Deadline приложения равен локальному времени подтверждения вопроса плюс 24 часа. Перед send_link отдельно требуются известный, не будущий `answer_at` и возраст ответа человека менее 24 часов. Возраст исходного комментария перед private reply локально не проверяется. Meta разрешает один private reply в пределах своего окна; дополнительные сообщения зависят от ответа человека. [Private Replies](https://developers.facebook.com/documentation/instagram-platform/private-replies/). Эти правила и наш локальный guard не доказывают фактического допуска Meta.
 
-```mermaid
-stateDiagram-v2
-    [*] --> reply_pending: comment
-    reply_pending --> question_pending: reply accepted
-    question_pending --> waiting_email: question accepted
-    waiting_email --> link_pending: valid email
-    waiting_email --> expired: deadline
-    link_pending --> completed: link accepted
-    reply_pending --> unknown: result uncertain
-    question_pending --> unknown: result uncertain
-    link_pending --> unknown: result uncertain
-    reply_pending --> failed: permanent rejection
-    question_pending --> failed: permanent rejection
-    link_pending --> failed: permanent rejection
-    unknown --> reply_pending: reconcile not sent
-    unknown --> question_pending: reconcile reply accepted
-    unknown --> waiting_email: reconcile question accepted
-    unknown --> link_pending: reconcile email or retry step
-    unknown --> completed: reconcile link accepted
-```
+**Почему фиксированный сценарий.** Условию нужны три действия и одно ожидание. Явные переходы ограничивают конкуренцию и восстановление без интерпретатора произвольного графа. Цена: другой порядок действий требует изменения кода. Jev расширяет распознавание ответа внутри waiting_email, а не создаёт новый универсальный workflow engine.
 
-При `unknown` сохраняем `step`: для неотправленного действия возвращаемся к соответствующему pending, для подтверждённого - к следующему состоянию. Если вопрос подтверждён после раннего ответа, открываем ожидание и повторно обрабатываем `deferred`. Для разрешения `unknown` нужна проверка у провайдера либо ручное решение; сам lease подтверждения не даёт. Неверный email в этом примере оставляет ожидание открытым; число уточняющих сообщений и политика отказа ещё не выбраны. `completed`, `expired` и `failed` - разные исходы.
-
-**Что проверить на модели до выбора реализации:** повтор одного `c1`; два конкурирующих обработчика `m1`; `m1` до подтверждения `cmd2`; `m1` на границе срока; падение после внешней отправки до записи результата; отказ DM после публичного ответа; перезапуск с открытым wait и истёкшим lease. Для каждого проверить состояние inbox, run, wait и command, а также число внешних попыток.
+Проверки и воспроизводимые команды: [Как проверить решение](2026-1029-plan-verification.md). Тесты и модель в этой документационной итерации не запускались.

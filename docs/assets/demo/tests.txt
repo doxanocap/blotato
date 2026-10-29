@@ -1,0 +1,37 @@
+BLOTATO: ЛОКАЛЬНЫЕ ТЕСТЫ. Meta и Jev заменены подставными HTTP-серверами.
+
+$ GOPROXY=off GOSUMDB=off go test -race -count=1 ./...
+
+?   	github.com/doxanocap/blotato/cmd/api	[no test files]
+?   	github.com/doxanocap/blotato/docs	[no test files]
+ok  	github.com/doxanocap/blotato/internal/app/api	2.385s
+ok  	github.com/doxanocap/blotato/internal/app/worker	2.287s
+?   	github.com/doxanocap/blotato/internal/app/worker/contracts	[no test files]
+?   	github.com/doxanocap/blotato/internal/clients	[no test files]
+?   	github.com/doxanocap/blotato/internal/clients/fake	[no test files]
+ok  	github.com/doxanocap/blotato/internal/clients/instagram	1.578s
+?   	github.com/doxanocap/blotato/internal/clients/jev	[no test files]
+?   	github.com/doxanocap/blotato/internal/domain/entity	[no test files]
+?   	github.com/doxanocap/blotato/internal/domain/entity/dto	[no test files]
+?   	github.com/doxanocap/blotato/internal/domain/entity/types	[no test files]
+?   	github.com/doxanocap/blotato/internal/domain/errs	[no test files]
+?   	github.com/doxanocap/blotato/internal/domain/service/automation	[no test files]
+?   	github.com/doxanocap/blotato/internal/domain/service/automation/contracts	[no test files]
+?   	github.com/doxanocap/blotato/internal/domain/service/resolver	[no test files]
+?   	github.com/doxanocap/blotato/internal/domain/service/resolver/contracts	[no test files]
+ok  	github.com/doxanocap/blotato/internal/domain/service/workflow	8.382s
+?   	github.com/doxanocap/blotato/internal/domain/service/workflow/contracts	[no test files]
+?   	github.com/doxanocap/blotato/internal/io/api	[no test files]
+?   	github.com/doxanocap/blotato/internal/io/api/controllers/models	[no test files]
+?   	github.com/doxanocap/blotato/internal/io/api/controllers/workflows	[no test files]
+?   	github.com/doxanocap/blotato/internal/io/api/controllers/workflows/contracts	[no test files]
+?   	github.com/doxanocap/blotato/internal/io/api/middleware	[no test files]
+?   	github.com/doxanocap/blotato/internal/pkg/config	[no test files]
+?   	github.com/doxanocap/blotato/internal/pkg/httpc	[no test files]
+ok  	github.com/doxanocap/blotato/internal/pkg/sqlite	2.151s
+?   	github.com/doxanocap/blotato/internal/repo	[no test files]
+?   	github.com/doxanocap/blotato/internal/repo/sqlite	[no test files]
+?   	github.com/doxanocap/blotato/internal/repo/sqlite/base	[no test files]
+?   	github.com/doxanocap/blotato/migrations/sqlite	[no test files]
+
+exit_code=0

@@ -1,0 +1,439 @@
+basePath: /
+definitions:
+  errs.HTTPError:
+    properties:
+      message:
+        type: string
+      request_id:
+        type: string
+    type: object
+  models.Run:
+    properties:
+      action_error:
+        type: string
+      error:
+        type: string
+      run_id:
+        type: integer
+      state:
+        type: string
+      status:
+        type: string
+      step:
+        type: string
+    type: object
+  models.Workflow:
+    properties:
+      email_question:
+        type: string
+      id:
+        type: integer
+      keyword:
+        type: string
+      link:
+        type: string
+      public_reply:
+        type: string
+    type: object
+  types.ActionStep:
+    enum:
+    - reply_comment
+    - ask_email
+    - send_link
+    type: string
+    x-enum-varnames:
+    - ReplyComment
+    - AskEmail
+    - SendLink
+  types.EventType:
+    enum:
+    - comment
+    - message
+    type: string
+    x-enum-varnames:
+    - Comment
+    - Message
+  types.SendOutcome:
+    enum:
+    - accepted
+    - retryable
+    - rejected
+    - unknown
+    type: string
+    x-enum-varnames:
+    - Accepted
+    - Retryable
+    - Rejected
+    - Unknown
+  workflows.postEventReq:
+    properties:
+      account_id:
+        example: brand
+        type: string
+      contact_id:
+        example: person
+        type: string
+      event_id:
+        example: c1
+        type: string
+      kind:
+        allOf:
+        - $ref: '#/definitions/types.EventType'
+        enum:
+        - comment
+        - message
+      occurred_at:
+        type: string
+      platform:
+        example: fake
+        type: string
+      text:
+        example: pricing
+        type: string
+    type: object
+  workflows.postFakeOutcomeReq:
+    properties:
+      outcome:
+        allOf:
+        - $ref: '#/definitions/types.SendOutcome'
+        enum:
+        - accepted
+        - retryable
+        - rejected
+        - unknown
+      step:
+        allOf:
+        - $ref: '#/definitions/types.ActionStep'
+        enum:
+        - reply_comment
+        - ask_email
+        - send_link
+    type: object
+  workflows.postInstagramWebhookReq:
+    properties:
+      entry:
+        items:
+          $ref: '#/definitions/workflows.webhookEntry'
+        type: array
+      object:
+        type: string
+    type: object
+  workflows.postWorkflowReq:
+    properties:
+      email_question:
+        example: What is your email address?
+        type: string
+      keyword:
+        example: pricing
+        type: string
+      link:
+        example: https://example.com/pricing
+        type: string
+      public_reply:
+        example: Sent you a DM!
+        type: string
+    type: object
+  workflows.webhookChange:
+    properties:
+      field:
+        type: string
+      value:
+        $ref: '#/definitions/workflows.webhookComment'
+    type: object
+  workflows.webhookComment:
+    properties:
+      from:
+        properties:
+          id:
+            type: string
+        type: object
+      id:
+        type: string
+      text:
+        type: string
+    type: object
+  workflows.webhookEntry:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/workflows.webhookChange'
+        type: array
+      field:
+        type: string
+      id:
+        type: string
+      messaging:
+        items:
+          $ref: '#/definitions/workflows.webhookMessage'
+        type: array
+      value:
+        $ref: '#/definitions/workflows.webhookComment'
+    type: object
+  workflows.webhookMessage:
+    properties:
+      is_self:
+        type: boolean
+      message:
+        properties:
+          is_deleted:
+            type: boolean
+          is_echo:
+            type: boolean
+          is_self:
+            type: boolean
+          is_unsupported:
+            type: boolean
+          mid:
+            type: string
+          text:
+            type: string
+        type: object
+      recipient:
+        properties:
+          id:
+            type: string
+        type: object
+      sender:
+        properties:
+          id:
+            type: string
+        type: object
+      timestamp:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: Обработка комментариев и сообщений Instagram.
+  title: Blotato API
+  version: "1.0"
+paths:
+  /api/v1/workflows:
+    get:
+      description: В Instagram-режиме требуется Bearer BLOTATO_ADMIN_TOKEN; в fake
+        авторизация не требуется.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Workflow'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+      security:
+      - ApiKeyAuth: []
+      summary: Получить правила
+      tags:
+      - workflows
+    post:
+      consumes:
+      - application/json
+      description: В Instagram-режиме требуется Bearer BLOTATO_ADMIN_TOKEN; в fake
+        авторизация не требуется.
+      parameters:
+      - description: Параметры правила
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workflows.postWorkflowReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Workflow'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+      security:
+      - ApiKeyAuth: []
+      summary: Создать правило обработки комментариев
+      tags:
+      - workflows
+  /api/v1/workflows/runs:
+    get:
+      description: Каждая строка содержит выполнение и одно его действие. В Instagram-режиме
+        требуется Bearer BLOTATO_ADMIN_TOKEN; в fake авторизация не требуется.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Run'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+      security:
+      - ApiKeyAuth: []
+      summary: Получить состояния выполнений
+      tags:
+      - workflows
+  /events:
+    post:
+      consumes:
+      - application/json
+      description: Только fake-режим. Ответ 202 возвращается после сохранения; повтор
+        известного события безопасен. Для отправки ссылки нужен occurred_at сообщения.
+      parameters:
+      - description: Входящее событие
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workflows.postEventReq'
+      responses:
+        "202":
+          description: Событие сохранено или уже получено
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+      summary: Принять тестовое событие
+      tags:
+      - fake
+  /fake/outcome:
+    post:
+      consumes:
+      - application/json
+      description: Только fake-режим. Не отправляет сообщения в Instagram.
+      parameters:
+      - description: Шаг и исход
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workflows.postFakeOutcomeReq'
+      responses:
+        "204":
+          description: Исход установлен
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+      summary: Задать исход тестовой отправки
+      tags:
+      - fake
+  /webhook/instagram:
+    get:
+      description: Только Instagram-режим. Проверка challenge не подтверждает доставку
+        реальных событий.
+      parameters:
+      - description: subscribe
+        in: query
+        name: hub.mode
+        required: true
+        type: string
+      - description: Verify token, настроенный на сервере
+        in: query
+        name: hub.verify_token
+        required: true
+        type: string
+      - description: Challenge Meta
+        in: query
+        name: hub.challenge
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Исходный challenge
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+      summary: Подтвердить подключение webhook
+      tags:
+      - instagram
+    post:
+      consumes:
+      - application/json
+      description: Только Instagram-режим. HMAC-SHA256 проверяется по исходному телу.
+        События сохраняются последовательно; при 503 повтор пакета безопасен благодаря
+        дедупликации сервиса. Служебные события и эхо игнорируются.
+      parameters:
+      - description: sha256=<HMAC исходного тела>
+        in: header
+        name: X-Hub-Signature-256
+        required: true
+        type: string
+      - description: Уведомление Meta
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workflows.postInstagramWebhookReq'
+      responses:
+        "200":
+          description: Все значимые события сохранены или уже получены
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/errs.HTTPError'
+      summary: Принять события Instagram
+      tags:
+      - instagram
+securityDefinitions:
+  ApiKeyAuth:
+    description: Bearer token; обязателен в Instagram-режиме.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

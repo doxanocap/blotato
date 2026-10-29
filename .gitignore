@@ -4,4 +4,6 @@
 .env.*
 !.env.example
 data/
+/_bin/
 /blotato.db*
+/vendor/

@@ -1,0 +1,14 @@
+{"id":"ru-accept-1","text":"Напишите мне на anna@example.com.","masked":"Напишите мне на EMAIL_0.","expected":"EMAIL_0"}
+{"id":"ru-accept-2","text":"Используйте (anna@example.com), пожалуйста","masked":"Используйте (EMAIL_0), пожалуйста","expected":"EMAIL_0"}
+{"id":"ru-deny-1","text":"Не используйте anna@example.com","masked":"Не используйте EMAIL_0","expected":"reject"}
+{"id":"ru-deny-2","text":"Не отправляйте на anna@example.com, это старый адрес","masked":"Не отправляйте на EMAIL_0, это старый адрес","expected":"reject"}
+{"id":"ru-uncertain-1","text":"Возможно, anna@example.com","masked":"Возможно, EMAIL_0","expected":"uncertain"}
+{"id":"ru-uncertain-2","text":"Вы знаете anna@example.com?","masked":"Вы знаете EMAIL_0?","expected":"uncertain"}
+{"id":"ru-multiple-1","text":"old@example.com или new@example.com","masked":"","expected":"skip"}
+{"id":"en-accept-1","text":"Please write to anna@example.com.","masked":"Please write to EMAIL_0.","expected":"EMAIL_0"}
+{"id":"en-accept-2","text":"Use (anna@example.com), please.","masked":"Use (EMAIL_0), please.","expected":"EMAIL_0"}
+{"id":"en-deny-1","text":"Do not use anna@example.com","masked":"Do not use EMAIL_0","expected":"reject"}
+{"id":"en-deny-2","text":"Never send to anna@example.com, it is old.","masked":"Never send to EMAIL_0, it is old.","expected":"reject"}
+{"id":"en-uncertain-1","text":"Maybe anna@example.com","masked":"Maybe EMAIL_0","expected":"uncertain"}
+{"id":"en-uncertain-2","text":"Is anna@example.com correct?","masked":"Is EMAIL_0 correct?","expected":"uncertain"}
+{"id":"en-multiple-1","text":"old@example.com or new@example.com","masked":"","expected":"skip"}
