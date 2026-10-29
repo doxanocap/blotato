@@ -25,6 +25,10 @@ The setup reached a Professional Instagram account, a connected business portfol
 
 We stopped at the requirement to verify the business portfolio during App Review. I chose not to continue that administrative process for this take-home. Verification and App Review remain unfinished. A successful challenge confirms our endpoint behavior; it does not establish Meta subscriptions or real event/message delivery.
 
+![Meta App Review requires a verified business portfolio](docs/assets/meta-business-verification.png)
+
+*Meta requires a verified business portfolio. The connected portfolio is unverified and App Review is incomplete.*
+
 The [assignment](docs/tasks/2026-1028-plan-start.md#scope) explicitly permits assuming that receiving comments/messages, replying to comments and sending platform messages already work. The core workflow is implemented and demonstrated locally; live platform access is a separate unfinished step.
 
 ## AI-assisted development
