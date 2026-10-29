@@ -2,20 +2,27 @@
 
 ## Proof of concept
 
+**A live backend is deployed over HTTPS. You can send API requests to it or use Swagger's "Try it out".**
+
+- **Live API base URL:** `https://kadirbekovvv.me/blotato`
+- **Interactive Swagger:** [https://kadirbekovvv.me/blotato/swagger/index.html](https://kadirbekovvv.me/blotato/swagger/index.html)
+- **API specification:** [https://kadirbekovvv.me/blotato/swagger/doc.json](https://kadirbekovvv.me/blotato/swagger/doc.json)
+- **How to test:** [public checks](docs/tasks/2026-1029-plan-verification.md#public-checks) and [complete local walkthrough](docs/tasks/2026-1029-plan-verification.md#full-scenario)
+
+With administrator access, use `GET` / `POST /api/v1/workflows` to list/create rules and `GET /api/v1/workflows/runs` to inspect execution state. Prefix these paths with the API base URL above. Request `BLOTATO_ADMIN_TOKEN` from the author privately and enter `Bearer <token>` in Swagger's Authorize dialog. Without it, management endpoints return `401`.
+
 Implemented: `pricing` comment → public reply **"Sent you a DM!"** → private reply asking for an email → persisted wait → email response → DM with a link.
 
-- [Swagger UI](https://kadirbekovvv.me/blotato/swagger/index.html)
-- [Swagger specification](https://kadirbekovvv.me/blotato/swagger/doc.json)
 - [Architecture, data model and execution diagrams](docs/tasks/2026-1028-plan-start.md#schemas)
 - [Original assignment](docs/tasks/2026-1028-plan-start.md#scope) · [Repository](https://github.com/doxanocap/blotato)
 
 **Jev email intent:** optional classification of the intent in replies containing an email address. The feature exists; real model quality has not been measured. `OPENROUTER_API_KEY` is required at startup; `BLOTATO_EMAIL_INTENT_ENABLED` separately enables classification. See [Jev verification](docs/tasks/2026-1029-plan-verification.md#jev) for the full procedure.
 
-Administrative operations require `Authorization: Bearer <BLOTATO_ADMIN_TOKEN>`. The token is not included here. Fake routes are local-mode tools; their presence in the shared specification does not mean they are enabled on the VPS. `/events` and `/fake/outcome` are not registered in the deployed Instagram mode.
+Fake routes are local-mode tools; their presence in the shared specification does not mean they are enabled on the VPS. `/events` and `/fake/outcome` are not registered in the deployed Instagram mode.
 
 ![Blotato Swagger UI](docs/assets/swagger.png)
 
-*Deployed Swagger with `/blotato` as the base path.*
+*The live Swagger UI, with its public address visible in the browser bar.*
 
 ## Live Instagram integration: stopped at business verification
 
